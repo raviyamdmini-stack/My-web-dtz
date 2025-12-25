@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dark Tech Zone | Ultra Web</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Three.js -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --neon:#00ffcc;
+      --pink:#ff00ff;
+      --glass:rgba(255,255,255,.08);
+      --text:#e8f6f2;
+      --bg:#000;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto;
+      background:var(--bg);
+      color:var(--text);
+      overflow:hidden;
+    }
+
+    /* CANVAS */
+    canvas#bg{position:fixed;inset:0;z-index:-2}
+
+    /* WATERMARK */
+    .watermark{
+      position:fixed; inset:0; display:flex; justify-content:center; align-items:center;
+      font-size:26px; font-weight:700; opacity:.06; transform:rotate(-21deg);
+      pointer-events:none; z-index:999; text-align:center; line-height:1.4; user-select:none;
+    }
+
+    /* HEADER BAR */
+    .topbar{
+      position:fixed; top:0; left:0; right:0; height:56px;
+      display:flex; align-items:center; justify-content:space-between; padding:0 14px;
+      background:linear-gradient(180deg, rgba(0,0,0,.65), rgba(0,0,0,.15));
+      backdrop-filter:blur(10px); border-bottom:1px solid rgba(0,255,204,.15); z-index:50;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.4px;
+      color:var(--neon); text-shadow:0 0 10px var(--neon);
+    }
+    .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--pink);box-shadow:0 0 12px var(--pink);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+    .actions{display:flex;gap:10px;align-items:center}
+    .mini-btn{
+      padding:8px 12px;border-radius:10px;border:1px solid rgba(0,255,204,.25);
+      background:rgba(0,0,0,.5);color:#fff;cursor:pointer;font-weight:600;
+    }
+    .mini-btn:hover{border-color:var(--neon)}
+
+    /* PAGES */
+    .page{
+      position:absolute; inset:56px 0 0 0; display:flex; justify-content:center; align-items:center;
+      opacity:0; transform:scale(.96) translateY(30px);
+      transition:opacity .6s cubic-bezier(.2,.8,.2,1), transform .6s cubic-bezier(.2,.8,.2,1);
+      pointer-events:none; padding:20px;
+    }
+    .page.active{opacity:1;transform:none;pointer-events:auto}
+
+    /* CARD */
+    .card{
+      width:100%; max-width:500px; padding:26px; border-radius:24px; background:var(--glass);
+      backdrop-filter:blur(28px) saturate(120%);
+      box-shadow:0 0 26px rgba(0,255,204,.25), inset 0 0 120px rgba(255,255,255,.05);
+      border:1px solid rgba(0,255,204,.25);
+    }
+    .card h1,.card h2{text-align:center;color:var(--neon);margin:10px 0 16px}
+    .card p{text-align:center;font-size:14px;opacity:.85;margin:0 0 14px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .spacer{height:8px}
+
+    input,select,button,textarea{
+      width:100%; padding:12px; margin:8px 0; border-radius:14px; border:none; font-family:inherit; font-size:14px; outline:none;
+    }
+    input,select,textarea{
+      background:#000; color:#fff; border:1px solid rgba(0,255,204,.35); box-shadow:inset 0 0 14px rgba(0,255,204,.06);
+    }
+    input:focus,select:focus,textarea:focus{
+      border-color:var(--pink);
+      box-shadow:0 0 16px rgba(255,0,255,.25), inset 0 0 14px rgba(255,0,255,.1);
+    }
+    button{
+      background:linear-gradient(135deg,var(--neon),var(--pink));
+      font-weight:700; cursor:pointer; color:#001a14;
+    }
+    button:disabled{filter:grayscale(.7);opacity:.7;cursor:not-allowed}
+
+    .back{
+      position:absolute; top:70px; left:16px; background:none; border:1px solid rgba(0,255,204,.35);
+      color:var(--neon); font-size:16px; padding:8px 12px; border-radius:12px; backdrop-filter:blur(8px); cursor:pointer;
+    }
+
+    /* MEMBER ITEM */
+    .member{
+      padding:12px; margin:8px 0; border-radius:14px; background:rgba(0,255,255,.12);
+      border:1px solid rgba(0,255,204,.25); display:flex; gap:12px; align-items:center; justify-content:space-between;
+    }
+    .member .meta{font-size:12px;opacity:.8}
+    .admin{color:#ffcc00;font-weight:700}
+
+    /* LIST */
+    .list{display:grid;gap:10px}
+
+    /* ALERT SYSTEM */
+    .alert-container{
+      position:fixed; top:70px; right:20px; z-index:10000; display:flex; flex-direction:column; gap:12px; max-width:360px;
+    }
+    .alert{
+      min-width:260px; padding:14px 16px; border-radius:16px; display:flex; gap:12px; align-items:flex-start;
+      animation:alertIn .6s cubic-bezier(.2,.8,.2,1); color:#001a14; border:1px solid rgba(255,255,255,.12); box-shadow:0 8px 28px rgba(0,0,0,.45);
+    }
+    .alert .icon{font-size:18px}
+    .alert.success{background:linear-gradient(135deg,#00ffcc,#00cc99)}
+    .alert.error{background:linear-gradient(135deg,#ff004c,#ff6a00)}
+    .alert.warning{background:linear-gradient(135deg,#ffcc00,#ff8800)}
+    .alert.info{background:linear-gradient(135deg,#00c6ff,#0072ff)}
+    .alert.admin{background:linear-gradient(135deg,#a855f7,#ec4899)}
+    .alert.alarm{background:linear-gradient(135deg,#ff1e1e,#ff8c00); border:1px solid rgba(255,255,255,.28)}
+    .alert .close{margin-left:auto; background:none; border:none; color:#fff; font-size:18px; cursor:pointer; opacity:.9}
+    @keyframes alertIn{from{opacity:0;transform:translateX(80px) scale(.9)}to{opacity:1;transform:none}}
+    @keyframes alertOut{to{opacity:0;transform:translateX(80px) scale(.8)}}
+
+    /* TOOL MENU */
+    .tool-menu{
+      position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:12px; align-items:flex-end;
+    }
+    .tool-btn{
+      width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer;
+      background:linear-gradient(135deg,var(--neon),var(--pink)); box-shadow:0 0 20px var(--neon); color:#001a14; border:1px solid rgba(255,255,255,.2)
+    }
+    .tool-item{
+      width:260px; padding:12px; border-radius:16px; background:var(--glass); backdrop-filter:blur(20px);
+      display:none; align-items:center; gap:10px; cursor:pointer; box-shadow:0 0 20px var(--neon); border:1px solid rgba(0,255,204,.25); color:#fff;
+    }
+    .tool-menu.open .tool-item{display:flex}
+    .tool-item:hover{border-color:var(--pink)}
+    .tool-icon{width:20px; height:20px; border-radius:6px; background:linear-gradient(135deg,var(--neon),var(--pink)); box-shadow:0 0 8px var(--neon)}
+
+    /* PROGRESS BAR */
+    .progress{
+      position:fixed; left:0; top:56px; height:2px; background:linear-gradient(90deg,var(--neon),var(--pink));
+      width:0; z-index:60; box-shadow:0 0 14px var(--neon)
+    }
+
+    /* BADGES */
+    .badge{
+      display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:12px; font-size:12px; font-weight:700;
+      border:1px solid rgba(255,255,255,.15); background:rgba(0,255,204,.12); color:#bafff2;
+    }
+    .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px var(--neon)}
+
+    /* MODALS */
+    .modal{
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:10001;
+      background:rgba(0,0,0,.6); backdrop-filter:blur(6px);
+    }
+    .modal.open{display:flex}
+    .modal .card{max-width:520px}
+
+    /* RESPONSIVE */
+    @media (max-width:520px){
+      .card{padding:20px;border-radius:20px}
+      .topbar{height:52px}
+      .page{inset:52px 0 0 0}
+      .alert-container{top:62px}
+      .tool-item{width:240px}
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 3D Background -->
+  <canvas id="bg" aria-hidden="true"></canvas>
+
+  <!-- Watermark -->
+  <div class="watermark" aria-hidden="true">
+    DARK TECH ZONE<br>
+    CREATED BY DTZ RAVIYA<br>
+    +94 778 430 626
+  </div>
+
+  <!-- Top Bar -->
+  <div class="topbar" role="navigation" aria-label="Top bar">
+    <div class="brand"><span class="dot" aria-hidden="true"></span> DARK TECH ZONE</div>
+    <div class="actions">
+      <button class="mini-btn" onclick="go('home')" aria-label="Go Home">Home</button>
+      <button class="mini-btn" onclick="go('leaderboard')" aria-label="Open Leaderboard">Leaderboard</button>
+      <button class="mini-btn" onclick="openCurrent()" aria-label="Open Profile">Profile</button>
+    </div>
+  </div>
+
+  <div class="progress" id="progress"></div>
+  <div class="alert-container" id="alerts" role="status" aria-live="polite"></div>
+
+  <!-- Tool Menu -->
+  <div class="tool-menu" id="toolMenu" aria-label="Tools">
+    <div class="tool-item" tabindex="0" role="button" onclick="openContact()" aria-label="Contact Us">
+      <span class="tool-icon" aria-hidden="true"></span> Contact Us
+    </div>
+    <div class="tool-item" tabindex="0" role="button" onclick="contactCall()" aria-label="Call Owner">
+      <span class="tool-icon" aria-hidden="true"></span> 📞 Call Owner
+    </div>
+    <div class="tool-item" tabindex="0" role="button" onclick="contactWhats()" aria-label="Open WhatsApp">
+      <span class="tool-icon" aria-hidden="true"></span> 💬 WhatsApp
+    </div>
+    <div class="tool-item" tabindex="0" role="button" onclick="toggleTheme()" aria-label="Toggle theme">
+      <span class="tool-icon" aria-hidden="true"></span> 🎨 Toggle Theme
+    </div>
+    <div class="tool-item" tabindex="0" role="button" onclick="toggleMusic()" aria-label="Toggle background music">
+      <span class="tool-icon" aria-hidden="true"></span> 🎧 Music On/Off
+    </div>
+    <div class="tool-item" tabindex="0" role="button" onclick="openAdminLogin()" aria-label="Admin login">
+      <span class="tool-icon" aria-hidden="true"></span> 🛡️ Admin Login
+    </div>
+    <div class="tool-item" tabindex="0" role="button" onclick="go('login')" aria-label="Open Login">
+      <span class="tool-icon" aria-hidden="true"></span> 🔐 User Login
+    </div>
+    <div class="tool-btn" onclick="toggleTools()" aria-label="Toggle tool menu">⚙️</div>
+  </div>
+
+  <!-- HOME -->
+  <div class="page active" id="home" role="main">
+    <div class="card" role="region" aria-label="Home">
+      <h1>Welcome to Dark Tech Zone</h1>
+      <p>Ultra-level secure team platform with neon futurism.</p>
+      <div class="spacer"></div>
+      <button onclick="go('login')">LOGIN</button>
+      <button onclick="go('leaderboard')">LEADERBOARD</button>
+      <div class="spacer"></div>
+      <div class="badge"><span class="dot"></span> Live system</div>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="page" id="login">
+    <button class="back" onclick="go('home')" aria-label="Back to Home">⬅ Back</button>
+    <div class="card" role="form" aria-label="Login">
+      <h2>Phone Login</h2>
+      <p>Enter your phone to receive a demo OTP.</p>
+      <input id="phone" placeholder="+94XXXXXXXXX" inputmode="tel" autocomplete="tel" aria-label="Phone number">
+      <div class="row">
+        <button id="btnSend" onclick="sendOTP()">Send OTP</button>
+        <button onclick="fillDemo()" title="Auto-fill demo phone">Use Demo</button>
+      </div>
+      <div id="otpBox" style="display:none">
+        <input id="otp" placeholder="Enter OTP" inputmode="numeric" aria-label="OTP code">
+        <div class="row">
+          <button onclick="verifyOTP()">Verify</button>
+          <button onclick="cancelOTP()">Cancel</button>
+        </div>
+      </div>
+      <p id="otpHint" style="opacity:.7"></p>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="profile">
+    <button class="back" onclick="logout()" aria-label="Logout">⬅ Logout</button>
+    <div class="card" role="region" aria-label="Profile">
+      <h2>Profile</h2>
+      <input id="name" placeholder="Name" aria-label="Your name">
+      <input id="skill" placeholder="Primary skill" aria-label="Your skill">
+      <select id="avatar" aria-label="Avatar type">
+        <option>Sphere</option>
+        <option>Cube</option>
+        <option>Torus</option>
+      </select>
+      <div class="row">
+        <button onclick="saveProfile()">Save</button>
+        <button onclick="go('leaderboard')">Leaderboard</button>
+      </div>
+      <div class="row">
+        <button onclick="openAdminLogin()">Admin Panel</button>
+        <button onclick="gainPoints()">Gain +10 pts</button>
+      </div>
+      <p class="meta" id="profileMeta"></p>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div class="page" id="leaderboard">
+    <button class="back" onclick="go('home')" aria-label="Back">⬅ Back</button>
+    <div class="card" role="region" aria-label="Leaderboard">
+      <h2>Team Leaderboard</h2>
+      <div class="list" id="leaderList" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="page" id="admin">
+    <button class="back" onclick="go('profile')" aria-label="Back to Profile">⬅ Back</button>
+    <div class="card" role="region" aria-label="Admin Panel">
+      <h2>Admin Panel</h2>
+      <div class="list" id="adminList"></div>
+    </div>
+  </div>
+
+  <!-- CONTACT MODAL -->
+  <div class="modal" id="contactModal" aria-hidden="true" aria-label="Contact Us modal">
+    <div class="card">
+      <h2>Contact Us</h2>
+      <p>Reach out instantly via call or WhatsApp. Or send us a message.</p>
+      <div class="row">
+        <button onclick="contactCall()">📞 Call</button>
+        <button onclick="contactWhats()">💬 WhatsApp</button>
+      </div>
+      <textarea id="contactMsg" rows="4" placeholder="Type your message..."></textarea>
+      <div class="row">
+        <button onclick="sendContact()">Send Message</button>
+        <button onclick="closeContact()">Close</button>
+      </div>
+      <p style="opacity:.7;font-size:12px;text-align:center">Note: Message is stored locally for demo.</p>
+    </div>
+  </div>
+
+  <!-- ADMIN PASSWORD MODAL -->
+  <div class="modal" id="adminModal" aria-hidden="true" aria-label="Admin login modal">
+    <div class="card">
+      <h2>Admin Login</h2>
+      <p>Enter admin password to unlock all admin permissions.</p>
+      <input id="adminPass" type="password" placeholder="Admin Password" aria-label="Admin password">
+      <div class="row">
+        <button onclick="submitAdminPass()">Unlock Admin</button>
+        <button onclick="closeAdminLogin()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Storage */
+    const LS = {
+      get(key, def){ try{ return JSON.parse(localStorage.getItem(key)) ?? def } catch{ return def } },
+      set(key, val){ localStorage.setItem(key, JSON.stringify(val)) },
+      del(key){ localStorage.removeItem(key) }
+    };
+
+    /* Globals */
+    const ADMIN_PASSWORD = (()=> {
+      // hidden constant (not displayed in UI)
+      return 'DTZTEAM';
+    })();
+    let users = LS.get('users', {});
+    let currentUser = LS.get('currentUser', null);
+    let isAdminSession = LS.get('isAdminSession', false);
+    let OTP = null, OTPExpires = 0, OTPLockUntil = 0;
+
+    /* Navigation */
+    function go(id){
+      const progress = document.getElementById('progress');
+      progress.style.transition = 'none'; progress.style.width = '0%';
+      requestAnimationFrame(()=>{
+        progress.style.transition = 'width .35s ease';
+        progress.style.width = '75%';
+      });
+
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+
+      setTimeout(()=>progress.style.width = '100%', 200);
+      setTimeout(()=>progress.style.width = '0%', 600);
+
+      if(id === 'leaderboard') renderLeaderboard();
+      if(id === 'profile') renderProfileMeta();
+      if(id === 'admin') renderAdmin();
+    }
+    function openCurrent(){ if(!currentUser){ go('login'); } else { go('profile'); } }
+
+    /* Alerts + alert tunes + alarm mode */
+    function showAlert(type, title, msg, time=4000, alarm=false){
+      const alerts = document.getElementById('alerts');
+      const a = document.createElement('div');
+      a.className = 'alert ' + (alarm ? 'alarm' : type);
+      const closeBtn = `<button class="close" aria-label="Close" onclick="dismissAlert(this.parentElement)">✖</button>`;
+      a.innerHTML = `<div class="icon">⚡</div><div><b>${title}</b><br><span>${msg}</span></div>${closeBtn}`;
+      alerts.appendChild(a);
+
+      if(alarm){
+        startAlarmTone(a); // continuous alarm until dismissed
+      }else{
+        playAlertSound(type); // short tone
+      }
+
+      if(time && !alarm) setTimeout(()=>removeAlert(a), time);
+    }
+    function removeAlert(a){
+      a.style.animation = 'alertOut .35s forwards';
+      setTimeout(()=>a.remove(), 350);
+    }
+    function dismissAlert(a){
+      stopAlarmTone(a);
+      removeAlert(a);
+    }
+
+    /* Tool Menu & Contact */
+    function toggleTools(){ document.getElementById('toolMenu').classList.toggle('open') }
+    function openContact(){ document.getElementById('contactModal').classList.add('open'); document.getElementById('contactModal').setAttribute('aria-hidden','false'); }
+    function closeContact(){ document.getElementById('contactModal').classList.remove('open'); document.getElementById('contactModal').setAttribute('aria-hidden','true'); }
+    function contactCall(){ showAlert('info','Contact','Calling owner...'); location.href = 'tel:+94778430626'; }
+    function contactWhats(){ showAlert('info','WhatsApp','Opening WhatsApp chat'); window.open('https://wa.me/94778430626','_blank'); }
+    function sendContact(){
+      const msg = (document.getElementById('contactMsg').value || '').trim();
+      if(!msg) return showAlert('warning','Empty','Please type a message');
+      const inbox = LS.get('inbox', []);
+      inbox.push({msg, at: Date.now(), from: currentUser || 'guest'});
+      LS.set('inbox', inbox);
+      document.getElementById('contactMsg').value = '';
+      showAlert('success','Sent','We received your message (demo)');
+      closeContact();
+    }
+
+    /* Theme */
+    let darkTheme = true;
+    function toggleTheme(){
+      darkTheme = !darkTheme;
+      document.documentElement.style.setProperty('--bg', darkTheme ? '#000' : '#071412');
+      document.documentElement.style.setProperty('--text', darkTheme ? '#e8f6f2' : '#d9fff5');
+      document.documentElement.style.setProperty('--glass', darkTheme ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.12)');
+      showAlert('info','Theme', darkTheme ? 'Dark neon activated' : 'Teal glow activated');
+    }
+
+    /* Admin login via password (hidden from UI) */
+    function openAdminLogin(){
+      document.getElementById('adminModal').classList.add('open');
+      document.getElementById('adminModal').setAttribute('aria-hidden','false');
+      document.getElementById('adminPass').value = '';
+    }
+    function closeAdminLogin(){
+      document.getElementById('adminModal').classList.remove('open');
+      document.getElementById('adminModal').setAttribute('aria-hidden','true');
+    }
+    function submitAdminPass(){
+      const pass = document.getElementById('adminPass').value;
+      if(pass === ADMIN_PASSWORD){
+        isAdminSession = true;
+        LS.set('isAdminSession', true);
+        showAlert('success','Admin Unlocked','Full admin permissions granted');
+        closeAdminLogin();
+        go('admin');
+      }else{
+        isAdminSession = false;
+        LS.set('isAdminSession', false);
+        // Alarm alert for incorrect attempts
+        showAlert('error','Incorrect','Invalid admin password', 0, true);
+      }
+    }
+
+    /* OTP LOGIN */
+    function rateLimited(){ return Date.now() < OTPLockUntil }
+    function sendOTP(){
+      const phoneEl = document.getElementById('phone');
+      const phone = (phoneEl.value || '').trim();
+      const hint = document.getElementById('otpHint');
+
+      if(!phone) return showAlert('warning','Phone Required','Enter phone number');
+      if(!/^\+?\d{8,15}$/.test(phone)) return showAlert('warning','Invalid Number','Use international format');
+      if(rateLimited()){
+        const left = Math.ceil((OTPLockUntil - Date.now())/1000);
+        return showAlert('warning','Please wait',`You can request OTP again in ${left}s`);
+      }
+
+      OTP = Math.floor(100000 + Math.random() * 900000);
+      OTPExpires = Date.now() + 2 * 60 * 1000; // 2 minutes
+      OTPLockUntil = Date.now() + 15 * 1000;   // throttle
+
+      document.getElementById('otpBox').style.display = 'block';
+      hint.textContent = `Demo OTP: ${OTP} (valid 2 minutes)`;
+      showAlert('info','OTP Sent','Check demo OTP displayed below');
+    }
+    function verifyOTP(){
+      const code = (document.getElementById('otp').value || '').trim();
+      const phone = (document.getElementById('phone').value || '').trim();
+      if(!OTP) return showAlert('warning','No OTP','Request OTP first');
+      if(Date.now() > OTPExpires) return showAlert('error','Expired','OTP expired, request again');
+      if(code != OTP) return showAlert('error','Invalid OTP','Try again');
+
+      const now = Date.now();
+      users[phone] = {
+        ...(users[phone] || {}),
+        phone,
+        role: users[phone]?.role || 'member',
+        joined: users[phone]?.joined || now,
+        lastLogin: now,
+        points: users[phone]?.points || 0
+      };
+      LS.set('users', users);
+      currentUser = phone;
+      LS.set('currentUser', currentUser);
+      showAlert('success','Welcome','Login successful');
+      document.getElementById('otpBox').style.display = 'none';
+      document.getElementById('otpHint').textContent = '';
+      OTP = null; OTPExpires = 0;
+
+      go('profile');
+    }
+    function cancelOTP(){
+      OTP = null; OTPExpires = 0;
+      document.getElementById('otpBox').style.display = 'none';
+      document.getElementById('otpHint').textContent = '';
+      showAlert('info','Cancelled','OTP entry closed');
+    }
+    function fillDemo(){ document.getElementById('phone').value = '+94778430626'; showAlert('info','Demo','Phone filled, now Send OTP'); }
+
+    /* PROFILE */
+    function saveProfile(){
+      if(!currentUser) return showAlert('warning','Not logged in','Please login first');
+      users[currentUser] = {
+        ...users[currentUser],
+        name: document.getElementById('name').value.trim(),
+        skill: document.getElementById('skill').value.trim(),
+        avatar: document.getElementById('avatar').value
+      };
+      LS.set('users', users);
+      showAlert('success','Saved','Profile updated');
+      renderProfileMeta();
+      renderLeaderboard();
+      setAvatarMesh(users[currentUser].avatar || 'Sphere');
+    }
+    function renderProfileMeta(){
+      if(!currentUser) return;
+      const u = users[currentUser] || {};
+      document.getElementById('name').value = u.name || '';
+      document.getElementById('skill').value = u.skill || '';
+      document.getElementById('avatar').value = u.avatar || 'Sphere';
+      const roleBadge = isAdminSession ? '<span class="admin">ADMIN (SESSION)</span>' : (u.role === 'admin' ? '<span class="admin">ADMIN</span>' : 'Member');
+      const meta = `Role: ${roleBadge} • Joined: ${u.joined ? new Date(u.joined).toLocaleString() : 'N/A'} • Points: ${u.points||0}`;
+      document.getElementById('profileMeta').innerHTML = meta;
+      setAvatarMesh(u.avatar || 'Sphere');
+    }
+    function gainPoints(){
+      if(!currentUser) return showAlert('warning','Not logged in','Login to gain points');
+      users[currentUser].points = (users[currentUser].points || 0) + 10;
+      LS.set('users', users);
+      showAlert('success','+10 Points','Nice progress');
+      renderProfileMeta(); renderLeaderboard();
+    }
+
+    /* Leaderboard */
+    function renderLeaderboard(){
+      const list = document.getElementById('leaderList');
+      list.innerHTML = '';
+      const arr = Object.values(users)
+        .filter(u=>u.name)
+        .sort((a,b)=> (b.points||0) - (a.points||0) || (a.joined||0) - (b.joined||0));
+      if(arr.length === 0){
+        list.innerHTML = '<p style="opacity:.7">No members yet. Save your profile to appear here.</p>';
+        return;
+      }
+      arr.forEach((u,i)=>{
+        const rank = i+1;
+        const badge = (u.role === 'admin') ? '<span class="admin">ADMIN</span>' : '';
+        const joined = u.joined ? new Date(u.joined).toLocaleDateString() : 'N/A';
+        const item = document.createElement('div');
+        item.className = 'member';
+        item.innerHTML = `
+          <div>
+            <b>#${rank} ${u.name}</b> ${badge}<br>
+            <span class="meta">${u.skill || '—'} • Joined ${joined}</span>
+          </div>
+          <div class="badge"><span class="dot"></span> ${u.points || 0} pts</div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    /* Admin – allowed if isAdminSession or stored role === 'admin' */
+    function adminAllowed(){ return isAdminSession || (currentUser && users[currentUser]?.role === 'admin'); }
+    function renderAdmin(){
+      if(!adminAllowed()) return showAlert('warning','Access Denied','Admin only');
+      const box = document.getElementById('adminList');
+      box.innerHTML = '';
+      Object.entries(users).forEach(([k,u])=>{
+        const div = document.createElement('div');
+        div.className = 'member';
+        div.innerHTML = `
+          <div>
+            <b>${u.name || u.phone}</b> – ${u.role.toUpperCase()}<br>
+            <span class="meta">Points: ${u.points||0}</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            ${u.role!=='admin' ? `<button class="mini-btn" onclick="promote('${k}')">Promote</button>` : `<button class="mini-btn" onclick="demote('${k}')">Demote</button>`}
+            ${k!==currentUser ? `<button class="mini-btn" style="border-color:#ff5a5a;color:#ffbfbf;background:rgba(0,0,0,.35)" onclick="removeUser('${k}')">Remove</button>` : ''}
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+    function openAdmin(){ if(!adminAllowed()) return showAlert('warning','Access Denied','Admin only'); go('admin'); }
+    function promote(k){
+      if(!adminAllowed()) return;
+      users[k].role = 'admin';
+      LS.set('users', users);
+      showAlert('admin','Promoted',`${users[k].name || users[k].phone} is now admin`);
+      renderAdmin(); renderLeaderboard();
+    }
+    function demote(k){
+      if(!adminAllowed()) return;
+      users[k].role = 'member';
+      LS.set('users', users);
+      showAlert('admin','Demoted',`${users[k].name || users[k].phone} is now member`);
+      renderAdmin(); renderLeaderboard();
+    }
+    function removeUser(k){
+      if(!adminAllowed()) return;
+      const who = users[k]?.name || users[k]?.phone || k;
+      delete users[k];
+      LS.set('users', users);
+      showAlert('admin','User Removed',`${who} deleted`);
+      renderAdmin(); renderLeaderboard();
+    }
+
+    function logout(){
+      LS.del('currentUser'); currentUser = null;
+      isAdminSession = false; LS.set('isAdminSession', false);
+      showAlert('info','Logged out','Session cleared');
+      go('home');
+    }
+
+    /* Keyboard shortcuts */
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape') toggleTools();
+      if(e.ctrlKey && e.key.toLowerCase() === 'l') go('login');
+      if(e.ctrlKey && e.key.toLowerCase() === 'h') go('home');
+      if(e.ctrlKey && e.key.toLowerCase() === 'b') go('leaderboard');
+      if(e.ctrlKey && e.key.toLowerCase() === 'a') openAdminLogin();
+      if(e.ctrlKey && e.key.toLowerCase() === 'm') toggleMusic();
+    });
+
+    /* WebAudio: hacker ambient + alert tones + continuous alarm */
+    let audioCtx = null;
+    let musicOn = false;
+    let musicGain = null, noiseGain = null;
+    let musicOscA = null, musicOscB = null, musicFilter = null, noiseNode = null;
+
+    function initAudio(){
+      if(audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      // Master gain
+      musicGain = audioCtx.createGain();
+      musicGain.gain.value = 0.0;
+      musicGain.connect(audioCtx.destination);
+
+      // Ambient chain
+      musicFilter = audioCtx.createBiquadFilter();
+      musicFilter.type = 'lowpass';
+      musicFilter.frequency.value = 1200;
+      musicFilter.Q.value = 0.7;
+      musicFilter.connect(musicGain);
+
+      musicOscA = audioCtx.createOscillator();
+      musicOscB = audioCtx.createOscillator();
+      musicOscA.type = 'sawtooth';  musicOscA.frequency.value = 110; // dark base
+      musicOscB.type = 'triangle';  musicOscB.frequency.value = 220; // shimmer
+      musicOscA.connect(musicFilter); musicOscB.connect(musicFilter);
+
+      // LFO on filter for motion
+      const lfo = audioCtx.createOscillator();
+      const lfoGain = audioCtx.createGain();
+      lfo.frequency.value = 0.06;
+      lfoGain.gain.value = 600;
+      lfo.connect(lfoGain); lfoGain.connect(musicFilter.frequency);
+      lfo.start();
+
+      musicOscA.start();
+      musicOscB.start();
+
+      // Subtle noise bed
+      const bufferSize = 2 * audioCtx.sampleRate;
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for(let i=0;i<bufferSize;i++){ output[i] = (Math.random()*2-1) * 0.08; }
+      noiseNode = audioCtx.createBufferSource();
+      noiseNode.buffer = noiseBuffer;
+      noiseNode.loop = true;
+
+      noiseGain = audioCtx.createGain();
+      noiseGain.gain.value = 0.03;
+      noiseNode.connect(noiseGain); noiseGain.connect(musicFilter);
+      noiseNode.start();
+
+      // Auto fade-in (autoplay may need gesture)
+      musicGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      musicGain.gain.linearRampToValueAtTime(0.10, audioCtx.currentTime + 1.2);
+      musicOn = true;
+    }
+
+    function toggleMusic(){
+      try{
+        if(!audioCtx) initAudio();
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        musicOn = !musicOn;
+        musicGain.gain.cancelScheduledValues(audioCtx.currentTime);
+        musicGain.gain.linearRampToValueAtTime(musicOn ? 0.10 : 0.0, audioCtx.currentTime + 0.3);
+        showAlert('info','Music', musicOn ? 'Hacker ambient ON' : 'Music OFF');
+      }catch(e){
+        showAlert('warning','Audio', 'Tap anywhere to enable sound and try again');
+      }
+    }
+
+    function playAlertSound(type='info'){
+      try{
+        if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        const f = audioCtx.createBiquadFilter();
+        o.type = 'square'; f.type = 'bandpass'; f.frequency.value = 1000; f.Q.value = 6;
+        g.gain.value = 0.08;
+        o.connect(f); f.connect(g); g.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        const seq = {
+          success: [880, 1320],
+          info:    [660],
+          warning: [520, 520, 520],
+          error:   [240, 200, 160],
+          admin:   [700, 900, 700]
+        }[type] || [600];
+
+        let t = now;
+        seq.forEach((freq)=>{
+          o.frequency.setValueAtTime(freq, t);
+          g.gain.setValueAtTime(0.10, t);
+          g.gain.setValueAtTime(0.0, t + 0.12);
+          t += 0.16;
+        });
+        o.start(now);
+        o.stop(t + 0.05);
+      }catch(e){ /* ignore */ }
+    }
+
+    // Continuous alarm tone per alert element (stop when dismissed)
+    const alarmMap = new WeakMap();
+    function startAlarmTone(alertEl){
+      try{
+        if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        const f = audioCtx.createBiquadFilter();
+        o.type = 'sawtooth'; f.type = 'bandpass'; f.frequency.value = 800; f.Q.value = 8;
+        g.gain.value = 0.06;
+
+        // Pulsing alarm via LFO
+        const lfo = audioCtx.createOscillator();
+        const lfoGain = audioCtx.createGain();
+        lfo.frequency.value = 3.2; // fast pulse
+        lfoGain.gain.value = 0.05;
+        lfo.connect(lfoGain); lfoGain.connect(g.gain);
+
+        o.connect(f); f.connect(g); g.connect(audioCtx.destination);
+        o.start(); lfo.start();
+
+        alarmMap.set(alertEl, {osc:o, gain:g, lfo, filter:f});
+      }catch(e){ /* ignore */ }
+    }
+    function stopAlarmTone(alertEl){
+      try{
+        const node = alarmMap.get(alertEl);
+        if(node){
+          const t = audioCtx.currentTime;
+          node.gain.gain.cancelScheduledValues(t);
+          node.gain.gain.linearRampToValueAtTime(0.0, t + 0.15);
+          setTimeout(()=>{
+            node.osc.stop(); node.lfo.stop();
+          }, 180);
+          alarmMap.delete(alertEl);
+        }
+      }catch(e){ /* ignore */ }
+    }
+
+    // Try autoplay on load (may be blocked; gesture unlock below)
+    window.addEventListener('load', ()=>{
+      try{
+        initAudio();
+        if(audioCtx && audioCtx.state === 'suspended'){
+          audioCtx.resume().catch(()=>{});
+        }
+      }catch(e){}
+    });
+    ['click','touchstart'].forEach(ev=>{
+      window.addEventListener(ev, ()=>{
+        if(!audioCtx){ initAudio(); }
+        if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
+      }, { once:true });
+    });
+
+    /* 3D BACKGROUND */
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 1, 1200);
+    camera.position.z = 90;
+
+    const renderer = new THREE.WebGLRenderer({canvas: bg, alpha: true, antialias:true});
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    // starfield
+    const starGeo = new THREE.BufferGeometry();
+    const pts = [];
+    for(let i=0;i<2600;i++){
+      pts.push((Math.random()-.5)*1000,(Math.random()-.5)*1000,(Math.random()-.5)*1000);
+    }
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
+    const stars = new THREE.Points(
+      starGeo,
+      new THREE.PointsMaterial({color:0x00ffcc,size:.9,transparent:true,opacity:.85,depthWrite:false})
+    );
+    scene.add(stars);
+
+    // neon grid
+    const grid = new THREE.GridHelper(420, 42, 0x00ffcc, 0x001f14);
+    grid.material.opacity = .18; grid.material.transparent = true;
+    grid.position.y = -80;
+    scene.add(grid);
+
+    // avatar
+    const avatarGroup = new THREE.Group(); scene.add(avatarGroup);
+    let avatarMesh = null;
+    function setAvatarMesh(type='Sphere'){
+      if(avatarMesh) avatarGroup.remove(avatarMesh);
+      const mat = new THREE.MeshStandardMaterial({color:0x00ffcc, emissive:0x001a14, metalness:.45, roughness:.25});
+      let geo;
+      switch(type){
+        case 'Cube': geo = new THREE.BoxGeometry(16,16,16); break;
+        case 'Torus': geo = new THREE.TorusKnotGeometry(8,2,100,16); break;
+        default: geo = new THREE.SphereGeometry(10,32,32);
+      }
+      avatarMesh = new THREE.Mesh(geo, mat);
+      avatarMesh.position.set(0,0,-10);
+      avatarGroup.add(avatarMesh);
+    }
+    setAvatarMesh('Sphere');
+
+    const light1 = new THREE.PointLight(0xff00ff, 2, 220); light1.position.set(40,40,60);
+    const light2 = new THREE.PointLight(0x00ffcc, 2, 220); light2.position.set(-40,-20,40);
+    const amb = new THREE.AmbientLight(0x404040,1.2);
+    scene.add(light1, light2, amb);
+
+    let mouseX=0, mouseY=0;
+    document.addEventListener('mousemove', (e)=>{
+      mouseX = (e.clientX / innerWidth) * 2 - 1;
+      mouseY = (e.clientY / innerHeight) * 2 - 1;
+    });
+
+    function animate(){
+      requestAnimationFrame(animate);
+      stars.rotation.y += 0.0009;
+      stars.rotation.x += 0.0003;
+      grid.rotation.y += 0.0002;
+      if(avatarMesh){
+        avatarMesh.rotation.y += 0.005;
+        avatarMesh.rotation.x += 0.003;
+        avatarGroup.position.x = mouseX * 6;
+        avatarGroup.position.y = -mouseY * 4;
+      }
+      camera.lookAt(scene.position);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', ()=>{
+      camera.aspect = innerWidth/innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // Sync avatar
+    document.getElementById('avatar').addEventListener('change', (e)=>{
+      setAvatarMesh(e.target.value);
+      showAlert('info','Avatar', `Set to ${e.target.value}`);
+    });
+
+    /* init UI */
+    (function init(){
+      if(currentUser) renderProfileMeta();
+      renderLeaderboard();
+      showAlert('info','Ready','Dark Tech Zone initialized', 2200);
+    })();
+  </script>
+</body>
+</html>
